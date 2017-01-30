@@ -130,30 +130,10 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		double greatest_dist;
 		int greatest_dist_index;
 		int k = getkNearest();
-		boolean first_run = true;
-		v_min = new ArrayList<Double>();
-		v_max = new ArrayList<Double>();
 		
-		// get max and min values of attributes for normalization
-		for (List<Object> training_instance : training_data){
-			for (int i = 0; i < training_instance.size(); i++){
-				Object value = training_instance.get(i);
-				if(value instanceof Double && !first_run){
-					if ((Double)value < v_min.get(i)) v_min.set(i, (Double)value);
-					if ((Double)value > v_max.get(i)) v_max.set(i, (Double)value);
-				} else if (value instanceof String && !first_run){
-					v_min.add(0.);
-					v_max.add(1.);
-				} else if (value instanceof Double && first_run){ //first run
-					v_min.add((Double)value);
-					v_max.add((Double)value);
-				} else if (value instanceof String && first_run){
-					v_min.add(0.);
-					v_max.add(1.);
-				}
-			}
-			first_run = false;
-		}
+		double norm[][] = normalizationScaling();
+		translation = norm[0];
+		scaling = norm[1];
 		
 		for (List<Object> training_instance : training_data){
 			if(getMetric() == 1)
@@ -193,12 +173,15 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		for (int i = 0; i < instance1.size(); i++){
 			a1 = instance1.get(i); // value of attribue of first instance
 			a2 = instance2.get(i); // value of attribue of second instance
-			
 			if(a1 instanceof Double){
 				// distance between numerical attributes
-				// normalization should be made in a seperate method
-				v1 = ((Double)a1 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
-				v2 = ((Double)a2 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
+				if(!isNormalizing()){
+					v1 = ((Double)a1 - translation[i]) * scaling[i];
+					v2 = ((Double)a2 - translation[i]) * scaling[i];
+				} else {
+					v1 = (Double)a1;
+					v2 = (Double)a2;
+				}
 				dist += Math.abs(v1 - v2);
 			} else if (a1 instanceof String) {
 				// distance between nominal attributes
@@ -229,9 +212,13 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 			
 			if(a1 instanceof Double){
 				// distance between numerical attributes
-				// normalization should be made in a seperate method
-				v1 = ((Double)a1 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
-				v2 = ((Double)a2 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
+				if(isNormalizing()){
+					v1 = ((Double)a1 - translation[i]) * scaling[i];
+					v2 = ((Double)a2 - translation[i]) * scaling[i];	
+				} else {
+					v1 = (Double)a1;
+					v2 = (Double)a2;
+				}
 				dist += Math.abs(v1 - v2) * Math.abs(v1 - v2);
 			} else if (a1 instanceof String) {
 				// distance between nominal attributes
@@ -252,7 +239,46 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	protected double[][] normalizationScaling() {
-		throw new NotImplementedException();
+		boolean first_run = true;
+		v_min = new ArrayList<Double>();
+		v_max = new ArrayList<Double>();
+		
+		// get max and min values of attributes for normalization
+		for (List<Object> training_instance : training_data){
+			for (int i = 0; i < training_instance.size(); i++){
+				Object value = training_instance.get(i);
+				if(value instanceof Double && !first_run){
+					if ((Double)value < v_min.get(i)) v_min.set(i, (Double)value);
+					if ((Double)value > v_max.get(i)) v_max.set(i, (Double)value);
+				} else if (value instanceof String && !first_run){
+					v_min.add(0.);
+					v_max.add(1.);
+				} else if (value instanceof Double && first_run){ //first run
+					v_min.add((Double)value);
+					v_max.add((Double)value);
+				} else if (value instanceof String && first_run){
+					v_min.add(0.);
+					v_max.add(1.);
+				}
+			}
+			first_run = false;
+		}
+		
+		int size = v_min.size(); // number of attributes
+		double[][] norm = new double[2][size]; // 1st dim: translation, 2nd dim: scaling
+		double factor;
+		
+		// extract translation and scaling values
+		for (int i = 0; i < v_min.size(); i++){
+			norm[0][i] = v_min.get(i); // translation values
+			factor = (v_max.get(i) - v_min.get(i));
+			if (factor != 0)
+				norm[1][i] = 1 / factor; // scaling values
+			else
+				norm[1][i] = 0; // this should not happen -> max and min values are same
+		}
+		
+		return norm;
 	}
 
 }
