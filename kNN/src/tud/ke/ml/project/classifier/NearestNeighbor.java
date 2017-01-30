@@ -41,8 +41,9 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 	protected Map<Object, Double> getUnweightedVotes(List<Pair<List<Object>, Double>> subset) {
 		Map<Object, Double> votes = new TreeMap<Object, Double>();
 		double vote_count;
+		int class_index = getClassAttribute();
 		for (Pair<List<Object>, Double> pair : subset){
-			Object y = pair.getA().get(pair.getA().size()-1);
+			Object y = pair.getA().get(class_index);
 			vote_count = 1.;
 			if (votes.containsKey(y)){
 				vote_count = votes.get(y) + 1.;
@@ -55,7 +56,37 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	protected Map<Object, Double> getWeightedVotes(List<Pair<List<Object>, Double>> subset) {
-		throw new NotImplementedException();
+		Map<Object, Double> votes = new TreeMap<Object, Double>();
+		double vote_count;
+		int class_index = getClassAttribute();
+		double weight; // weighting for individual nearest neighbors
+		double weight_sum = 0; // weighted sums will be devided by sum of all weights
+		Map<Object, Double> weight_sums = new TreeMap<Object, Double>();
+		double factor;
+		for (Pair<List<Object>, Double> pair : subset){
+			Object y = pair.getA().get(class_index);
+			factor = pair.getB()*pair.getB();
+			if (factor != 0)
+				weight = 1 / factor;
+			else // distance 0 means, that full weight should be applied
+				weight = 1;
+			vote_count = weight;
+			weight_sum = weight;
+			if (votes.containsKey(y)){
+				vote_count += votes.get(y);
+				weight_sum += weight_sums.get(y);
+			}
+			votes.put(y, vote_count);
+			weight_sums.put(y, weight_sum);
+		}
+		
+		// devide each vote by sum of weights - maybe not needed?
+		/*for(Map.Entry<Object, Double> entry : votes.entrySet()){
+			vote_count = entry.getValue() / weight_sums.get(entry.getKey());
+			votes.put(entry.getKey(), vote_count);
+		}*/
+		
+		return votes;
 	}
 
 	@Override
@@ -81,7 +112,11 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	protected Object vote(List<Pair<List<Object>, Double>> subset) {
-		Map<Object, Double> votes = getUnweightedVotes(subset);
+		Map<Object, Double> votes;
+		if (!isInverseWeighting())
+			votes = getWeightedVotes(subset);
+		else
+			votes = getUnweightedVotes(subset);
 		Object winner = getWinner(votes);
 		
 		return winner;
@@ -121,7 +156,10 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		}
 		
 		for (List<Object> training_instance : training_data){
-			dist_tmp = determineManhattanDistance(training_instance, test_instance);
+			if(getMetric() == 1)
+				dist_tmp = determineEuclideanDistance(training_instance, test_instance);
+			else
+				dist_tmp = determineManhattanDistance(training_instance, test_instance);
 			
 			// only save dist of k nearest
 			if(NN.size() >= k){
@@ -151,16 +189,19 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		Object a2;
 		double v1;
 		double v2;
-		double dist = 0;
+		double dist = 0; // distance between two instances
 		for (int i = 0; i < instance1.size(); i++){
-			a1 = instance1.get(i);
-			a2 = instance2.get(i);
+			a1 = instance1.get(i); // value of attribue of first instance
+			a2 = instance2.get(i); // value of attribue of second instance
 			
 			if(a1 instanceof Double){
+				// distance between numerical attributes
+				// normalization should be made in a seperate method
 				v1 = ((Double)a1 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
-				v2 = ((Double)a2 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));	
+				v2 = ((Double)a2 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
 				dist += Math.abs(v1 - v2);
 			} else if (a1 instanceof String) {
+				// distance between nominal attributes
 				if (a1 != a2) dist += 1.;
 			} else {
 				try {
@@ -177,7 +218,36 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	protected double determineEuclideanDistance(List<Object> instance1, List<Object> instance2) {
-		throw new NotImplementedException();
+		Object a1;
+		Object a2;
+		double v1;
+		double v2;
+		double dist = 0; // distance between two instances
+		for (int i = 0; i < instance1.size(); i++){
+			a1 = instance1.get(i); // value of attribue of first instance
+			a2 = instance2.get(i); // value of attribue of second instance
+			
+			if(a1 instanceof Double){
+				// distance between numerical attributes
+				// normalization should be made in a seperate method
+				v1 = ((Double)a1 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
+				v2 = ((Double)a2 - v_min.get(i)) / (v_max.get(i) - v_min.get(i));
+				dist += Math.abs(v1 - v2) * Math.abs(v1 - v2);
+			} else if (a1 instanceof String) {
+				// distance between nominal attributes
+				if (a1 != a2) dist += 1.;
+			} else {
+				try {
+					throw new Exception("Instance attribute with index " + 
+							i + " is neither number nor string");
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		// return euclidean distance
+		return Math.pow(dist, 0.5);
 	}
 
 	@Override
