@@ -15,7 +15,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	protected double[] scaling;
 	protected double[] translation;
-
+//
 	@Override
 	public String getMatrikelNumbers() {
 		//TODO
