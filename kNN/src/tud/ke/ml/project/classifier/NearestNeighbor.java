@@ -23,6 +23,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 	protected double[] translation;
 	
 	protected List<List<Object>> training_data;
+	protected Map<Object, Double> class_counts;
 	protected List<Double> v_min;
 	protected List<Double> v_max;
 
@@ -35,6 +36,18 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 	@Override
 	protected void learnModel(List<List<Object>> data) {
 		training_data = data;
+		
+		int class_index = getClassAttribute();
+		class_counts = new TreeMap<Object, Double>();
+		for (List<Object> example : training_data){
+			Object class_label = example.get(class_index);
+			double class_count;
+			if (!class_counts.containsKey(class_label)){
+				class_counts.put(class_label, 1.);
+			}
+			class_count = class_counts.get(class_label) + 1.;
+			class_counts.put(class_label, class_count);
+		}
 	}
 
 	@Override
@@ -103,6 +116,12 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 			else if(vote.getValue() > class_count){
 				class_count = vote.getValue();
 				winner = vote.getKey();
+			}
+			else if(vote.getValue() == class_count){
+				if( class_counts.get(winner) < class_counts.get(vote.getKey()) ){
+					class_count = vote.getValue();
+					winner = vote.getKey();
+				}
 			}
 			first_run = false;
 		}
