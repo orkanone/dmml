@@ -9,7 +9,7 @@ import java.util.TreeMap;
 
 import org.hamcrest.core.IsNull;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+//import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import tud.ke.ml.project.util.Pair;
 
 /**
@@ -28,7 +28,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	public String getMatrikelNumbers() {
-		return "Mat NR here";
+		return "2577706,YYYYYYY,ZZZZZZZ";
 		//throw new NotImplementedException();
 	}
 
@@ -69,7 +69,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 			if (factor != 0)
 				weight = 1 / factor;
 			else // distance 0 means, that full weight should be applied
-				weight = 1;
+				weight = 1000000000; //TODO was passiert wenn distanz 0 wird?
 			vote_count = weight;
 			weight_sum = weight;
 			if (votes.containsKey(y)){
@@ -171,27 +171,30 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		double v2;
 		double dist = 0; // distance between two instances
 		for (int i = 0; i < instance1.size(); i++){
-			a1 = instance1.get(i); // value of attribue of first instance
-			a2 = instance2.get(i); // value of attribue of second instance
-			if(a1 instanceof Double){
-				// distance between numerical attributes
-				if(!isNormalizing()){
-					v1 = ((Double)a1 - translation[i]) * scaling[i];
-					v2 = ((Double)a2 - translation[i]) * scaling[i];
+			if (i != getClassAttribute()){
+				a1 = instance1.get(i); // value of attribue of first instance
+				a2 = instance2.get(i); // value of attribue of second instance
+
+				if(a1 instanceof Double){
+					// distance between numerical attributes
+					if(isNormalizing()){
+						v1 = ((Double)a1 - translation[i]) * scaling[i];
+						v2 = ((Double)a2 - translation[i]) * scaling[i];
+					} else {
+						v1 = (Double)a1;
+						v2 = (Double)a2;
+					}
+					dist += Math.abs(v1 - v2);
+				} else if (a1 instanceof String) {
+					// distance between nominal attributes
+					if (a1.equals(a2)) dist += 1.;
 				} else {
-					v1 = (Double)a1;
-					v2 = (Double)a2;
-				}
-				dist += Math.abs(v1 - v2);
-			} else if (a1 instanceof String) {
-				// distance between nominal attributes
-				if (a1 != a2) dist += 1.;
-			} else {
-				try {
-					throw new Exception("Instance attribute with index " + 
-							i + " is neither number nor string");
-				} catch (Exception e) {
-					e.printStackTrace();
+					try {
+						throw new Exception("Instance attribute with index " + 
+								i + " is neither number nor string");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -207,28 +210,30 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		double v2;
 		double dist = 0; // distance between two instances
 		for (int i = 0; i < instance1.size(); i++){
-			a1 = instance1.get(i); // value of attribue of first instance
-			a2 = instance2.get(i); // value of attribue of second instance
-			
-			if(a1 instanceof Double){
-				// distance between numerical attributes
-				if(isNormalizing()){
-					v1 = ((Double)a1 - translation[i]) * scaling[i];
-					v2 = ((Double)a2 - translation[i]) * scaling[i];	
+			if (i != getClassAttribute()){
+				a1 = instance1.get(i); // value of attribute of first instance
+				a2 = instance2.get(i); // value of attribute of second instance
+				
+				if(a1 instanceof Double){
+					// distance between numerical attributes
+					if(isNormalizing()){
+						v1 = ((Double)a1 - translation[i]) * scaling[i];
+						v2 = ((Double)a2 - translation[i]) * scaling[i];	
+					} else {
+						v1 = (Double)a1;
+						v2 = (Double)a2;
+					}
+					dist += Math.abs(v1 - v2) * Math.abs(v1 - v2);
+				} else if (a1 instanceof String) {
+					// distance between nominal attributes
+					if (a1 != a2) dist += 1.;
 				} else {
-					v1 = (Double)a1;
-					v2 = (Double)a2;
-				}
-				dist += Math.abs(v1 - v2) * Math.abs(v1 - v2);
-			} else if (a1 instanceof String) {
-				// distance between nominal attributes
-				if (a1 != a2) dist += 1.;
-			} else {
-				try {
-					throw new Exception("Instance attribute with index " + 
-							i + " is neither number nor string");
-				} catch (Exception e) {
-					e.printStackTrace();
+					try {
+						throw new Exception("Instance attribute with index " + 
+								i + " is neither number nor string");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}
