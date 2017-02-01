@@ -69,7 +69,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 			if (factor != 0)
 				weight = 1 / factor;
 			else // distance 0 means, that full weight should be applied
-				weight = 1;
+				weight = 1000000000; //TODO was passiert wenn distanz 0 wird?
 			vote_count = weight;
 			weight_sum = weight;
 			if (votes.containsKey(y)){
@@ -187,7 +187,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 					dist += Math.abs(v1 - v2);
 				} else if (a1 instanceof String) {
 					// distance between nominal attributes
-					if (a1 != a2) dist += 1.;
+					if (a1.equals(a2)) dist += 1.;
 				} else {
 					try {
 						throw new Exception("Instance attribute with index " + 
