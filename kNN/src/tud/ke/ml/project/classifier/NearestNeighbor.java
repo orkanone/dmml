@@ -2,7 +2,6 @@ package tud.ke.ml.project.classifier;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -29,7 +28,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 
 	@Override
 	public String getMatrikelNumbers() {
-		return "2577706,YYYYYYY,ZZZZZZZ";
+		return "2577706,1541704,2762485";
 		//throw new NotImplementedException();
 	}
 
@@ -73,31 +72,20 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 		double vote_count;
 		int class_index = getClassAttribute();
 		double weight; // weighting for individual nearest neighbors
-		double weight_sum = 0; // weighted sums will be devided by sum of all weights
-		Map<Object, Double> weight_sums = new TreeMap<Object, Double>();
 		double factor;
 		for (Pair<List<Object>, Double> pair : subset){
 			Object y = pair.getA().get(class_index);
-			factor = pair.getB()*pair.getB();
+			factor = pair.getB();
 			if (factor != 0)
 				weight = 1 / factor;
 			else // distance 0 means, that full weight should be applied
 				weight = 1000000000; //TODO was passiert wenn distanz 0 wird?
 			vote_count = weight;
-			weight_sum = weight;
 			if (votes.containsKey(y)){
 				vote_count += votes.get(y);
-				weight_sum += weight_sums.get(y);
 			}
 			votes.put(y, vote_count);
-			weight_sums.put(y, weight_sum);
 		}
-		
-		// devide each vote by sum of weights - maybe not needed?
-		/*for(Map.Entry<Object, Double> entry : votes.entrySet()){
-			vote_count = entry.getValue() / weight_sums.get(entry.getKey());
-			votes.put(entry.getKey(), vote_count);
-		}*/
 		
 		return votes;
 	}
@@ -118,6 +106,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 				winner = vote.getKey();
 			}
 			else if(vote.getValue() == class_count){
+				// tie break
 				if( class_counts.get(winner) < class_counts.get(vote.getKey()) ){
 					class_count = vote.getValue();
 					winner = vote.getKey();
@@ -132,7 +121,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 	@Override
 	protected Object vote(List<Pair<List<Object>, Double>> subset) {
 		Map<Object, Double> votes;
-		if (!isInverseWeighting())
+		if (isInverseWeighting())
 			votes = getWeightedVotes(subset);
 		else
 			votes = getUnweightedVotes(subset);
@@ -174,6 +163,15 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 					NN.remove(greatest_dist_index);
 					NN.add(new Pair<List<Object>, Double>(training_instance, dist_tmp));
 				}
+				else if(dist_tmp == greatest_dist){
+					// tie break
+					Object nn_new_class = training_instance.get(getClassAttribute());
+					Object nn_class = NN.get(greatest_dist_index).getA().get(getClassAttribute());
+					if(class_counts.get(nn_new_class) > class_counts.get(nn_class)){
+						NN.remove(greatest_dist_index);
+						NN.add(new Pair<List<Object>, Double>(training_instance, dist_tmp));
+					}
+				}
 			} else {
 				NN.add(new Pair<List<Object>, Double>(training_instance, dist_tmp));
 			}
@@ -193,7 +191,7 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 			if (i != getClassAttribute()){
 				a1 = instance1.get(i); // value of attribue of first instance
 				a2 = instance2.get(i); // value of attribue of second instance
-
+				
 				if(a1 instanceof Double){
 					// distance between numerical attributes
 					if(isNormalizing()){
@@ -204,16 +202,9 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 						v2 = (Double)a2;
 					}
 					dist += Math.abs(v1 - v2);
-				} else if (a1 instanceof String) {
+				} else {
 					// distance between nominal attributes
 					if (a1.equals(a2)) dist += 1.;
-				} else {
-					try {
-						throw new Exception("Instance attribute with index " + 
-								i + " is neither number nor string");
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
 				}
 			}
 		}
@@ -243,16 +234,9 @@ public class NearestNeighbor extends INearestNeighbor implements Serializable {
 						v2 = (Double)a2;
 					}
 					dist += Math.abs(v1 - v2) * Math.abs(v1 - v2);
-				} else if (a1 instanceof String) {
-					// distance between nominal attributes
-					if (a1 != a2) dist += 1.;
 				} else {
-					try {
-						throw new Exception("Instance attribute with index " + 
-								i + " is neither number nor string");
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					// distance between nominal attributes
+					if (a1.equals(a2)) dist += 1.;
 				}
 			}
 		}
